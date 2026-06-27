@@ -6,7 +6,6 @@
 namespace FacturaScripts\Plugins\AliasLocalizaciones;
 
 use FacturaScripts\Core\Template\InitClass;
-use FacturaScripts\Core\Where;
 use FacturaScripts\Dinamic\Model\AliasType;
 
 /**
@@ -25,6 +24,9 @@ class Init extends InitClass
 
     /** Tipo de alias para provincias (catálogo aliastypes) */
     const ALIAS_TYPE_PROVINCE = 'province';
+
+    /** Nombre del plugin, responsable de estos tipos de alias (catálogo aliastypes) */
+    const PLUGIN_NAME = 'AliasLocalizaciones';
 
     public function init(): void
     {
@@ -47,20 +49,10 @@ class Init extends InitClass
 
     public function update(): void
     {
-        // aseguramos que los tipos de alias existan en el catálogo
-        $this->ensureAliasType(self::ALIAS_TYPE_COUNTRY, 'País');
-        $this->ensureAliasType(self::ALIAS_TYPE_PROVINCE, 'Provincia');
-        $this->ensureAliasType(self::ALIAS_TYPE_CITY, 'Ciudad');
-        $this->ensureAliasType(self::ALIAS_TYPE_POI, 'Punto de interés');
-    }
-
-    protected function ensureAliasType(string $code, string $description): void
-    {
-        $type = new AliasType();
-        if (false === $type->loadWhere([Where::eq('aliastype', $code)])) {
-            $type->aliastype = $code;
-            $type->description = $description;
-            $type->save();
-        }
+        // aseguramos que los tipos de alias existan en el catálogo, indicando el plugin responsable
+        AliasType::ensure(self::ALIAS_TYPE_COUNTRY, 'País', self::PLUGIN_NAME);
+        AliasType::ensure(self::ALIAS_TYPE_PROVINCE, 'Provincia', self::PLUGIN_NAME);
+        AliasType::ensure(self::ALIAS_TYPE_CITY, 'Ciudad', self::PLUGIN_NAME);
+        AliasType::ensure(self::ALIAS_TYPE_POI, 'Punto de interés', self::PLUGIN_NAME);
     }
 }

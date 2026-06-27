@@ -1,0 +1,7 @@
+{
+    "alias": "Alias",
+    "alias-cod-not-found": "Record %cod% does not exist for alias type %aliastype%.",
+    "aliaslocalizaciones": "AliasLocalizaciones",
+    "aliases": "Aliases",
+    "favorite": "Favorite"
+}

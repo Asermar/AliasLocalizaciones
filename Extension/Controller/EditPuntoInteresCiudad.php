@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2026 Alexis Serafin <alexis@okodex.com>
+ * Copyright (C) 2026 Oko Digital Experts, S.L.L. (Okodex)
  */
 
 namespace FacturaScripts\Plugins\AliasLocalizaciones\Extension\Controller;
@@ -12,7 +12,7 @@ use FacturaScripts\Plugins\AliasLocalizaciones\Init;
 /**
  * Extiende EditPuntoInteresCiudad para mostrar y gestionar los alias del punto de interés.
  *
- * @author Alexis Serafin <alexis@okodex.com>
+ * @author Alexis Serafín <alexis@okodex.com>
  */
 class EditPuntoInteresCiudad
 {

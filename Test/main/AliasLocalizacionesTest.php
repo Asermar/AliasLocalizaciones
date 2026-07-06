@@ -17,12 +17,24 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * @author Alexis Serafín <alexis@okodex.com>
+ *
+ * @description
+ * ## Alias de localizaciones
+ *
+ * Integra el plugin `Alias` en **países, provincias, ciudades y puntos de interés**:
+ *
+ * - Se puede crear un alias asociado a cada tipo de localización existente.
+ * - Al borrar la localización, sus alias se eliminan (**borrado en cascada**).
+ * - Se **rechaza** crear un alias para una localización inexistente (FK simulada).
  */
 final class AliasLocalizacionesTest extends TestCase
 {
     use LogErrorsTrait;
     use RandomDataTrait;
 
+    /**
+     * @description No permite guardar un alias para una localización inexistente.
+     */
     public function testAliasRejectsMissingLocation(): void
     {
         $alias = new Alias();
@@ -35,6 +47,9 @@ final class AliasLocalizacionesTest extends TestCase
         MiniLog::clear();
     }
 
+    /**
+     * @description Alias de una **ciudad**: se crea y se borra en cascada al borrar la ciudad.
+     */
     public function testCityAliasAndCascadeDelete(): void
     {
         $country = $this->getRandomCountry();
@@ -62,6 +77,9 @@ final class AliasLocalizacionesTest extends TestCase
         $country->delete();
     }
 
+    /**
+     * @description Alias de un **país**: se crea y se borra en cascada al borrar el país.
+     */
     public function testCountryAliasAndCascadeDelete(): void
     {
         $country = $this->getRandomCountry();
@@ -81,6 +99,9 @@ final class AliasLocalizacionesTest extends TestCase
         $this->assertFalse($check->load($aliasId), 'el alias debería borrarse al borrar el país');
     }
 
+    /**
+     * @description Alias de un **punto de interés**: se crea y se borra en cascada al borrarlo.
+     */
     public function testPoiAliasAndCascadeDelete(): void
     {
         $country = $this->getRandomCountry();
@@ -114,6 +135,9 @@ final class AliasLocalizacionesTest extends TestCase
         $country->delete();
     }
 
+    /**
+     * @description Alias de una **provincia**: se crea y se borra en cascada al borrar la provincia.
+     */
     public function testProvinceAliasAndCascadeDelete(): void
     {
         $country = $this->getRandomCountry();

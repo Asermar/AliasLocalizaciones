@@ -2,7 +2,7 @@
 
 Plugin **satélite** de **[Alias](../Alias/CLAUDE.md)** que dota de **alias polimórficos** a las
 fichas de **países, provincias, ciudades y puntos de interés** del core de FacturaScripts.
-`version 1.00`, `min_version 2025`, `min_php 8`, `require = 'Alias'`. Licencia **GPL v3**.
+`version 1.02`, `min_version 2025`, `min_php 8`, `require = 'Alias'`. Licencia **GPL v3**.
 Copyright **Okodex** / autor **Alexis Serafín**. Es submódulo dentro de Mesa_FS.
 
 > **El mecanismo general (alias polimórfico, catálogo `aliastypes`, FK simulada, favorito único,
@@ -41,6 +41,23 @@ satélite"*). Concretado aquí:
   (`addEditListView('EditAliasLocalizacion', 'Alias', 'aliases', 'fa-solid fa-tags')` en las cuatro).
   **Diferencia clave con AliasClientes/AliasBusCanarias**, que usan un XMLView por ficha. Columnas:
   `id`/`aliastype`/`cod` en `display="none"`, `alias` y `favorite` visibles.
+
+## Extensión de tabla (`Extension/Table/puntos_interes_ciudades.xml`)
+
+Dos columnas añadidas a la tabla del core, que necesita el volcado de POI de la BD de reservas
+(`Mesa_FS/bin/migracion-reservas/importar_poi_localizaciones.php`):
+
+| Columna | Tipo | Para qué | ¿Andamiaje? |
+|---|---|---|---|
+| `bs_parada` | `varchar(250)` | El nombre de parada del POI legacy. Lo consume `getPOIParada()` de Mesa_Reservas al generar los ODS de importación | **No**: dato de negocio |
+| `bs_legacy_idpoi` | `integer` | El `idPOI` legacy, para que la reproyección emita un identificador estable mientras Mesa_Reservas siga vivo | **Sí**: se retira cuando la importación viva dentro de FS |
+
+> `bs_parada` **ya existía en la BD como columna huérfana** antes de declararla aquí, de un intento
+> anterior a la conversión de los plugins en submódulos. Declararla la volvió legítima sin ningún
+> `ALTER`. Es el ejemplo de libro de que `DbUpdater` nunca elimina columnas: lo que se crea, queda.
+
+Se declaran en **este** plugin, y no en BusCanarias, porque es el dueño del `aliastype='poi'` y ya
+extiende `PuntoInteresCiudad` por modelo y por controlador: no añade dependencias nuevas.
 
 ## Particularidades
 

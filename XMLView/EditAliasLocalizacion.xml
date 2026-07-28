@@ -12,7 +12,7 @@
                 <widget type="text" fieldname="cod" maxlength="50" required="true"/>
             </column>
             <column name="alias" order="130">
-                <widget type="text" fieldname="alias" maxlength="50" required="true"/>
+                <widget type="text" fieldname="alias" maxlength="100" required="true"/>
             </column>
             <column name="favorite" order="140" display="center">
                 <widget type="checkbox" fieldname="favorite"/>

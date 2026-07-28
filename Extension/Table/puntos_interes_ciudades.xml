@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Columnas que el volcado de POI de la base de datos de reservas necesita en
+    puntos_interes_ciudades (tabla del core).
+
+    bs_parada        el nombre de parada del POI legacy. Lo consume getPOIParada()
+                     de Mesa_Reservas al generar los ODS de importacion, asi que no
+                     es andamiaje: es dato de negocio.
+                     Ojo: esta columna YA EXISTE en la base de datos como huerfana,
+                     de un intento anterior a la conversion de los plugins en
+                     submodulos. Declararla aqui la vuelve legitima sin ningun ALTER.
+
+    bs_legacy_idpoi  el idPOI de la tabla POI legacy. Solo sirve para que la
+                     reproyeccion pueda emitir un idPOI estable mientras
+                     Mesa_Reservas siga vivo. ES ANDAMIAJE: se retira cuando la
+                     importacion viva dentro de FacturaScripts.
+-->
+<table>
+    <column>
+        <name>bs_parada</name>
+        <type>character varying(250)</type>
+    </column>
+    <column>
+        <name>bs_legacy_idpoi</name>
+        <type>integer</type>
+    </column>
+</table>

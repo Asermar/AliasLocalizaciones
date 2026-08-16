@@ -10,6 +10,18 @@ Copyright **Okodex** / autor **Alexis Serafín**. Es submódulo dentro de Mesa_F
 > `../Alias/CLAUDE.md`.** Este documento solo cubre lo específico de AliasLocalizaciones. No
 > re-explicar aquí la teoría; enlazar a la sección correspondiente de `Alias/CLAUDE.md`.
 
+## Dónde se desarrolla
+
+**Cliente prototipo: `Mesa_FS`.** Aquí se desarrolla este plugin. Las demás instalaciones lo
+**consumen** como submódulo fijado a un tag, y son fuente de mejoras y arreglos.
+
+Si lees esto desde otra instalación estás en un consumidor, y eso **no te prohíbe trabajar aquí**:
+a veces el fallo solo se reproduce en este entorno y arreglarlo desde el prototipo sería trabajar a
+ciegas. Lo que se pide es **preguntarlo antes**, no decidirlo en silencio — ni negarse.
+
+Se trabaje donde se trabaje, el arreglo vive en el repo del plugin y hay que **mover el pin** de
+esta instalación para que lo reciba: commitear no basta.
+
 ## Qué aporta este satélite
 
 Sigue el molde estándar de satélite (ver `Alias/CLAUDE.md`, sección *"Cómo lo integra un plugin

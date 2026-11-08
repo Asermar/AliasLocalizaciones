@@ -16,7 +16,8 @@ mismo sitio se nombra de varias formas según quién lo diga, y hay que reconoce
 - **Registra cuatro tipos de alias** en el catálogo: `country` (países), `province` (provincias),
   `city` (ciudades) y `poi` (puntos de interés).
 - **Pestaña de alias en las cuatro fichas**, con una **única vista compartida** en lugar de cuatro
-  copias: lo que se arregla en una vale para todas.
+  copias: lo que se arregla en una vale para todas. Cada pestaña **sólo alcanza los alias de la ficha
+  abierta**: lo acota la guarda de `Alias`.
 - **Valida que el alias apunte a un registro que existe** y **se niega a borrar** una localización
   que tenga alias, o que tenga algo colgando debajo, diciendo qué lo impide: así no quedan alias
   huérfanos reservando denominaciones, ni desaparece por cascada lo que hubiera debajo.
@@ -27,7 +28,7 @@ mismo sitio se nombra de varias formas según quién lo diga, y hay que reconoce
 
 ## Requisitos
 
-- [`Alias`](https://github.com/Asermar/Alias)
+- [`Alias`](https://github.com/Asermar/Alias) **1.03** o superior (la guarda de la pestaña de alias).
 - FacturaScripts con core **2025** o superior, y PHP **8** o superior.
 
 ## Changelog
@@ -36,6 +37,21 @@ Cambios destacados por versión (la versión es la de `facturascripts.ini`, úni
 
 ### 1.0x — Alias de países, provincias, ciudades y PDI
 
+- **1.03** — **La pestaña de alias de una ficha deja de alcanzar los alias de otras fichas.**
+  Mostraba sólo los de la localización abierta, pero el formulario manda el tipo y el código y las
+  acciones del núcleo cargan por código: con permiso sobre países, provincias, ciudades o puntos de
+  interés se podía crear, editar o borrar **cualquier** alias del sistema —incluidos los de clientes
+  o los que sirven de puente con sistemas externos—. Ahora las cuatro pestañas pasan por la guarda
+  `AliasTabGuard` de `Alias`, que anula con un aviso lo que venga de fuera de la ficha, sin escribir
+  nada.
+
+  > **Al actualizar**: esta versión necesita **`Alias` 1.03 o superior**, que es donde vive la guarda.
+  > Instala `Alias` **antes o a la vez**. No hay que desactivar nada previamente, y esto está medido
+  > en la instalación de pruebas, no supuesto: con `Alias` 1.02 y un satélite al día, la ficha de esa
+  > entidad no abre —«Class FacturaScripts\Dinamic\Lib\AliasTabGuard not found»— pero el **gestor de
+  > plugins sigue funcionando**, así que se arregla instalando `Alias` desde la propia interfaz, sin
+  > tocar `plugins.json`. El `require_min` del `.ini` lo deja escrito, pero el núcleo **no lo lee**:
+  > es documentación, no una puerta.
 - **1.02** — **Borrar una localización deja de llevarse por delante lo que cuelga de ella.** Un país,
   una provincia, una ciudad o un punto de interés con alias, o con algo debajo, ya no se puede borrar:
   la operación se niega y el aviso dice qué lo impide y en qué orden hay que deshacerlo. Antes la base

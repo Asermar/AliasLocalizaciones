@@ -17,8 +17,10 @@ mismo sitio se nombra de varias formas según quién lo diga, y hay que reconoce
   `city` (ciudades) y `poi` (puntos de interés).
 - **Pestaña de alias en las cuatro fichas**, con una **única vista compartida** en lugar de cuatro
   copias: lo que se arregla en una vale para todas.
-- **Valida que el alias apunte a un registro que existe** y **borra los alias en cascada** al eliminar la
-  localización, para que no queden huérfanos reservando denominaciones.
+- **Valida que el alias apunte a un registro que existe** y **se niega a borrar** una localización
+  que tenga alias, o que tenga algo colgando debajo, diciendo qué lo impide: así no quedan alias
+  huérfanos reservando denominaciones, ni desaparece por cascada lo que hubiera debajo.
+- **Al cambiar el código** de un país, una provincia o una ciudad, sus alias pasan al código nuevo.
 - **Extiende la tabla de puntos de interés** con los campos que necesita la importación de datos
   externos (`bs_parada`, `bs_legacy_idpoi`), de modo que un punto de interés pueda conservar la
   referencia de su origen.
@@ -34,6 +36,13 @@ Cambios destacados por versión (la versión es la de `facturascripts.ini`, úni
 
 ### 1.0x — Alias de países, provincias, ciudades y PDI
 
+- **1.02** — **Borrar una localización deja de llevarse por delante lo que cuelga de ella.** Un país,
+  una provincia, una ciudad o un punto de interés con alias, o con algo debajo, ya no se puede borrar:
+  la operación se niega y el aviso dice qué lo impide y en qué orden hay que deshacerlo. Antes la base
+  de datos borraba en cascada lo que colgaba debajo —provincias, ciudades, puntos de interés— y los
+  alias de todo ello quedaban huérfanos, ocupando denominaciones que ya no se podían reutilizar. Y al
+  **cambiar el código** de un país, una provincia o una ciudad, sus alias pasan al código nuevo en vez
+  de quedarse apuntando a uno que ya no existe.
 - **1.01** — Se añaden `bs_parada` y `bs_legacy_idpoi` a la tabla de puntos de interés, para poder
   conservar la referencia de origen de un PDI importado. Y el campo de alias admite **100 caracteres**,
   acompañando la ampliación del plugin `Alias`: si el widget se quedara en 50, el formulario recortaría

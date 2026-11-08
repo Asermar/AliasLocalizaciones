@@ -2,7 +2,7 @@
 
 Plugin **satélite** de **[Alias](../Alias/CLAUDE.md)** que dota de **alias polimórficos** a las
 fichas de **países, provincias, ciudades y puntos de interés** del core de FacturaScripts.
-`version 1.01`, `min_version 2025`, `min_php 8`, `require = 'Alias'`. Licencia **GPL v3**.
+`version 1.02`, `min_version 2025`, `min_php 8`, `require = 'Alias'`. Licencia **GPL v3**.
 Copyright **Okodex** / autor **Alexis Serafín**. Es submódulo dentro de Mesa_FS.
 
 > **El mecanismo general (alias polimórfico, catálogo `aliastypes`, FK simulada, favorito único,

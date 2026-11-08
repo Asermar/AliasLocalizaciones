@@ -19,27 +19,84 @@
 namespace FacturaScripts\Plugins\AliasLocalizaciones\Extension\Model;
 
 use Closure;
+use FacturaScripts\Core\Tools;
 use FacturaScripts\Core\Where;
 use FacturaScripts\Dinamic\Model\Alias;
+use FacturaScripts\Dinamic\Model\PuntoInteresCiudad;
 use FacturaScripts\Plugins\AliasLocalizaciones\Init;
 
 /**
- * Simula el ON DELETE CASCADE: al eliminar una ciudad, borra sus alias.
+ * Alias de una ciudad: no se borra si tiene alias propios o puntos de interés debajo (aunque no tengan
+ * alias), porque los hijos los borra la base por FK ON DELETE CASCADE sin pasar por el modelo
+ * y sus alias quedarían huérfanos; se vacía de abajo arriba.
+ * Al renombrar su clave, sus alias pasan al código nuevo.
  *
  * @author Alexis Serafín <alexis@okodex.com>
  */
 class Ciudad
 {
-    public function delete(): Closure
+    /**
+     * Código anterior de cada registro mientras se renombra: el After lo necesita y el core ya
+     * no lo conserva (changeId() sobrescribe original con el nuevo antes de llamarlo).
+     */
+    private $renaming = [];
+
+    public function changePrimaryColumnValueAfter(): Closure
+    {
+        $renaming = &$this->renaming;
+        return function () use (&$renaming) {
+            $old = $renaming[spl_object_id($this)] ?? null;
+            unset($renaming[spl_object_id($this)]);
+            if (null === $old) {
+                return;
+            }
+
+            $done = Alias::table()
+                ->whereEq('aliastype', Init::ALIAS_TYPE_CITY)
+                ->whereEq('cod', (string)$old)
+                ->update(['cod' => (string)$this->idciudad]);
+            if (false === $done) {
+                Tools::log()->error('alias-rename-error', [
+                    '%aliastype%' => Init::ALIAS_TYPE_CITY,
+                    '%old%' => $old,
+                    '%new%' => $this->idciudad,
+                ]);
+                return false;
+            }
+
+            (new Alias())->clearCache();
+        };
+    }
+
+    public function changePrimaryColumnValueBefore(): Closure
+    {
+        $renaming = &$this->renaming;
+        return function () use (&$renaming) {
+            $renaming[spl_object_id($this)] = $this->idciudad;
+        };
+    }
+
+    public function deleteBefore(): Closure
     {
         return function () {
-            $where = [
+            $refused = false;
+
+            $aliases = Alias::count([
                 Where::eq('aliastype', Init::ALIAS_TYPE_CITY),
-                Where::eq('cod', $this->idciudad),
-            ];
-            foreach (Alias::all($where) as $alias) {
-                $alias->delete();
+                Where::eq('cod', (string)$this->idciudad),
+            ]);
+            if ($aliases > 0) {
+                Tools::log()->warning('location-has-aliases', ['%count%' => $aliases]);
+                $refused = true;
             }
+
+            $children = PuntoInteresCiudad::table()->whereEq('idciudad', $this->idciudad)->count();
+            if ($children > 0) {
+                Tools::log()->warning('location-has-pois', ['%count%' => $children]);
+                $refused = true;
+            }
+
+            return $refused ? false : null;
         };
     }
 }

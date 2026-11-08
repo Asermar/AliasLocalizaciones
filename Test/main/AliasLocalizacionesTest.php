@@ -19,9 +19,11 @@
 namespace FacturaScripts\Test\Plugins;
 
 use FacturaScripts\Core\Base\MiniLog;
-use FacturaScripts\Core\Where;
 use FacturaScripts\Dinamic\Model\Alias;
 use FacturaScripts\Dinamic\Model\AliasType;
+use FacturaScripts\Dinamic\Model\Ciudad;
+use FacturaScripts\Dinamic\Model\Pais;
+use FacturaScripts\Dinamic\Model\Provincia;
 use FacturaScripts\Dinamic\Model\PuntoInteresCiudad;
 use FacturaScripts\Plugins\AliasLocalizaciones\Init;
 use FacturaScripts\Test\Traits\LogErrorsTrait;
@@ -37,13 +39,18 @@ use PHPUnit\Framework\TestCase;
  * Integra el plugin `Alias` en **países, provincias, ciudades y puntos de interés**:
  *
  * - Se puede crear un alias asociado a cada tipo de localización existente.
- * - Al borrar la localización, sus alias se eliminan (**borrado en cascada**).
+ * - **No se borra** una localización que tenga alias propios o algo debajo (provincias, ciudades o
+ *   puntos), aunque eso no tenga alias: se vacía de abajo arriba. El aviso dice qué lo impide.
+ * - Al **renombrar** la clave de un país, una provincia o una ciudad, sus alias la siguen.
  * - Se **rechaza** crear un alias para una localización inexistente (FK simulada).
  */
 final class AliasLocalizacionesTest extends TestCase
 {
     use LogErrorsTrait;
     use RandomDataTrait;
+
+    /** prefijo de los alias de prueba, para limpiar los que deje una pasada muerta a medias */
+    const ALIAS_PREFIX = 'LOCTEST-';
 
     /**
      * @description No permite guardar un alias para una localización inexistente.
@@ -61,140 +68,257 @@ final class AliasLocalizacionesTest extends TestCase
     }
 
     /**
-     * @description Alias de una **ciudad**: se crea y se borra en cascada al borrar la ciudad.
+     * @description Una **ciudad** con alias no se borra; sin el alias, sí.
      */
-    public function testCityAliasAndCascadeDelete(): void
+    public function testCityWithAliasCannotBeDeleted(): void
     {
-        $country = $this->getRandomCountry();
-        $this->assertTrue($country->save(), 'no se pudo crear el país');
+        [$country, $province, $city] = $this->makeCity();
+        $alias = $this->makeAlias(Init::ALIAS_TYPE_CITY, $city->idciudad, 'CITY-ALIAS');
 
-        $province = $this->getRandomProvince($country->codpais);
-        $this->assertTrue($province->save(), 'no se pudo crear la provincia');
+        $this->assertRefused($city, 'location-has-aliases');
+        $this->assertTrue($alias->exists(), 'el alias no debe borrarse');
 
-        $city = $this->getRandomCity($province->idprovincia);
-        $this->assertTrue($city->save(), 'no se pudo crear la ciudad');
-
-        $alias = new Alias();
-        $alias->aliastype = Init::ALIAS_TYPE_CITY;
-        $alias->cod = $city->idciudad;
-        $alias->alias = 'CITY-ALIAS';
-        $this->assertTrue($alias->save(), 'no se pudo guardar el alias de la ciudad');
-        $aliasId = $alias->id;
-
-        $this->assertTrue($city->delete());
-
-        $check = new Alias();
-        $this->assertFalse($check->load($aliasId), 'el alias debería borrarse al borrar la ciudad');
-
-        $province->delete();
-        $country->delete();
-    }
-
-    /**
-     * @description Alias de un **país**: se crea y se borra en cascada al borrar el país.
-     */
-    public function testCountryAliasAndCascadeDelete(): void
-    {
-        $country = $this->getRandomCountry();
-        $this->assertTrue($country->save(), 'no se pudo crear el país');
-
-        $alias = new Alias();
-        $alias->aliastype = Init::ALIAS_TYPE_COUNTRY;
-        $alias->cod = $country->codpais;
-        $alias->alias = 'COUNTRY-ALIAS';
-        $this->assertTrue($alias->save(), 'no se pudo guardar el alias del país');
-        $aliasId = $alias->id;
-
-        // al borrar el país, sus alias deben eliminarse (cascade simulado)
+        $this->assertTrue($alias->delete());
+        $this->assertTrue($city->delete(), 'sin alias ni puntos, la ciudad se borra');
+        $this->assertTrue($province->delete());
         $this->assertTrue($country->delete());
-
-        $check = new Alias();
-        $this->assertFalse($check->load($aliasId), 'el alias debería borrarse al borrar el país');
     }
 
     /**
-     * @description Alias de un **punto de interés**: se crea y se borra en cascada al borrarlo.
+     * @description Una **ciudad** con puntos de interés, aunque no tengan alias, no se borra.
      */
-    public function testPoiAliasAndCascadeDelete(): void
+    public function testCityWithPoisCannotBeDeleted(): void
     {
-        $country = $this->getRandomCountry();
-        $this->assertTrue($country->save(), 'no se pudo crear el país');
+        [$country, $province, $city] = $this->makeCity();
+        $poi = $this->makePoi($city);
 
-        $province = $this->getRandomProvince($country->codpais);
-        $this->assertTrue($province->save(), 'no se pudo crear la provincia');
-
-        $city = $this->getRandomCity($province->idprovincia);
-        $this->assertTrue($city->save(), 'no se pudo crear la ciudad');
-
-        $poi = new PuntoInteresCiudad();
-        $poi->idciudad = $city->idciudad;
-        $poi->name = 'Test POI ' . mt_rand(1, 99999);
-        $this->assertTrue($poi->save(), 'no se pudo crear el punto de interés');
-
-        $alias = new Alias();
-        $alias->aliastype = Init::ALIAS_TYPE_POI;
-        $alias->cod = $poi->id;
-        $alias->alias = 'POI-ALIAS';
-        $this->assertTrue($alias->save(), 'no se pudo guardar el alias del punto de interés');
-        $aliasId = $alias->id;
+        $this->assertRefused($city, 'location-has-pois');
+        $this->assertTrue($poi->exists(), 'el punto de interés no debe borrarse');
 
         $this->assertTrue($poi->delete());
-
-        $check = new Alias();
-        $this->assertFalse($check->load($aliasId), 'el alias debería borrarse al borrar el punto de interés');
-
-        $city->delete();
-        $province->delete();
-        $country->delete();
+        $this->assertTrue($city->delete());
+        $this->assertTrue($province->delete());
+        $this->assertTrue($country->delete());
     }
 
     /**
-     * @description Alias de una **provincia**: se crea y se borra en cascada al borrar la provincia.
+     * @description Al renombrar `idciudad`, los alias de la ciudad pasan al código nuevo.
      */
-    public function testProvinceAliasAndCascadeDelete(): void
+    public function testCityRenameMovesAliases(): void
     {
-        $country = $this->getRandomCountry();
-        $this->assertTrue($country->save(), 'no se pudo crear el país');
+        [$country, $province, $city] = $this->makeCity();
+        $alias = $this->makeAlias(Init::ALIAS_TYPE_CITY, $city->idciudad, 'CITY-RENAME');
 
+        $newId = $this->freeId(Ciudad::class);
+        $this->assertTrue($city->changeId($newId), 'no se pudo renombrar la ciudad');
+        $this->assertAliasCod($alias, (string)$newId);
+
+        $this->assertTrue($alias->delete());
+        $this->assertTrue($city->delete());
+        $this->assertTrue($province->delete());
+        $this->assertTrue($country->delete());
+    }
+
+    /**
+     * @description Un **país** con alias no se borra; sin el alias, sí.
+     */
+    public function testCountryWithAliasCannotBeDeleted(): void
+    {
+        $country = $this->makeCountry();
+        $alias = $this->makeAlias(Init::ALIAS_TYPE_COUNTRY, $country->codpais, 'COUNTRY-ALIAS');
+
+        $this->assertRefused($country, 'location-has-aliases');
+        $this->assertTrue($alias->exists(), 'el alias no debe borrarse');
+
+        $this->assertTrue($alias->delete());
+        $this->assertTrue($country->delete(), 'sin alias ni provincias, el país se borra');
+    }
+
+    /**
+     * @description Un **país** con provincias, aunque no tengan alias, no se borra.
+     */
+    public function testCountryWithProvincesCannotBeDeleted(): void
+    {
+        $country = $this->makeCountry();
         $province = $this->getRandomProvince($country->codpais);
         $this->assertTrue($province->save(), 'no se pudo crear la provincia');
 
-        $alias = new Alias();
-        $alias->aliastype = Init::ALIAS_TYPE_PROVINCE;
-        $alias->cod = $province->idprovincia;
-        $alias->alias = 'PROVINCE-ALIAS';
-        $this->assertTrue($alias->save(), 'no se pudo guardar el alias de la provincia');
-        $aliasId = $alias->id;
+        $this->assertRefused($country, 'location-has-provinces');
+        $this->assertTrue($province->exists(), 'la provincia no debe borrarse');
 
         $this->assertTrue($province->delete());
-
-        $check = new Alias();
-        $this->assertFalse($check->load($aliasId), 'el alias debería borrarse al borrar la provincia');
-
-        $country->delete();
+        $this->assertTrue($country->delete());
     }
 
-    protected function ensureType(string $code, string $description): void
+    /**
+     * @description Al renombrar `codpais`, los alias del país pasan al código nuevo.
+     */
+    public function testCountryRenameMovesAliases(): void
     {
-        $type = new AliasType();
-        if (false === $type->loadWhere([Where::eq('aliastype', $code)])) {
-            $type->aliastype = $code;
-            $type->description = $description;
-            $type->save();
-        }
+        $country = $this->makeCountry();
+        $alias = $this->makeAlias(Init::ALIAS_TYPE_COUNTRY, $country->codpais, 'COUNTRY-RENAME');
+
+        $newCode = 'TR' . mt_rand(1000, 9999);
+        $this->assertTrue($country->changeId($newCode), 'no se pudo renombrar el país');
+        $this->assertAliasCod($alias, $newCode);
+
+        $this->assertTrue($alias->delete());
+        $this->assertTrue($country->delete());
+    }
+
+    /**
+     * @description Un **punto de interés** con alias no se borra; sin el alias, sí.
+     */
+    public function testPoiWithAliasCannotBeDeleted(): void
+    {
+        [$country, $province, $city] = $this->makeCity();
+        $poi = $this->makePoi($city);
+        $alias = $this->makeAlias(Init::ALIAS_TYPE_POI, $poi->id, 'POI-ALIAS');
+
+        $this->assertRefused($poi, 'location-has-aliases');
+        $this->assertTrue($alias->exists(), 'el alias no debe borrarse');
+
+        $this->assertTrue($alias->delete());
+        $this->assertTrue($poi->delete(), 'sin alias, el punto de interés se borra');
+        $this->assertTrue($city->delete());
+        $this->assertTrue($province->delete());
+        $this->assertTrue($country->delete());
+    }
+
+    /**
+     * @description Una **provincia** con alias no se borra; sin el alias, sí.
+     */
+    public function testProvinceWithAliasCannotBeDeleted(): void
+    {
+        $country = $this->makeCountry();
+        $province = $this->getRandomProvince($country->codpais);
+        $this->assertTrue($province->save(), 'no se pudo crear la provincia');
+        $alias = $this->makeAlias(Init::ALIAS_TYPE_PROVINCE, $province->idprovincia, 'PROVINCE-ALIAS');
+
+        $this->assertRefused($province, 'location-has-aliases');
+        $this->assertTrue($alias->exists(), 'el alias no debe borrarse');
+
+        $this->assertTrue($alias->delete());
+        $this->assertTrue($province->delete(), 'sin alias ni ciudades, la provincia se borra');
+        $this->assertTrue($country->delete());
+    }
+
+    /**
+     * @description Una **provincia** con ciudades, aunque no tengan alias, no se borra.
+     */
+    public function testProvinceWithCitiesCannotBeDeleted(): void
+    {
+        [$country, $province, $city] = $this->makeCity();
+
+        $this->assertRefused($province, 'location-has-cities');
+        $this->assertTrue($city->exists(), 'la ciudad no debe borrarse');
+
+        $this->assertTrue($city->delete());
+        $this->assertTrue($province->delete());
+        $this->assertTrue($country->delete());
+    }
+
+    /**
+     * @description Al renombrar `idprovincia`, los alias de la provincia pasan al código nuevo.
+     */
+    public function testProvinceRenameMovesAliases(): void
+    {
+        $country = $this->makeCountry();
+        $province = $this->getRandomProvince($country->codpais);
+        $this->assertTrue($province->save(), 'no se pudo crear la provincia');
+        $alias = $this->makeAlias(Init::ALIAS_TYPE_PROVINCE, $province->idprovincia, 'PROVINCE-RENAME');
+
+        $newId = $this->freeId(Provincia::class);
+        $this->assertTrue($province->changeId($newId), 'no se pudo renombrar la provincia');
+        $this->assertAliasCod($alias, (string)$newId);
+
+        $this->assertTrue($alias->delete());
+        $this->assertTrue($province->delete());
+        $this->assertTrue($country->delete());
     }
 
     protected function setUp(): void
     {
-        // aseguramos los tipos del catálogo (normalmente los siembra Init::update)
-        $this->ensureType(Init::ALIAS_TYPE_COUNTRY, 'País');
-        $this->ensureType(Init::ALIAS_TYPE_PROVINCE, 'Provincia');
-        $this->ensureType(Init::ALIAS_TYPE_CITY, 'Ciudad');
-        $this->ensureType(Init::ALIAS_TYPE_POI, 'Punto de interés');
+        // un alias de prueba que sobrevive a su localización (test cortado a medias) bloquearía
+        // el borrado de la siguiente que reciba su mismo id
+        Alias::table()->whereLike('alias', self::ALIAS_PREFIX . '%')->delete();
+
+        // aseguramos los tipos del catálogo, como hace Init::update
+        AliasType::ensure(Init::ALIAS_TYPE_COUNTRY, 'País', Init::PLUGIN_NAME);
+        AliasType::ensure(Init::ALIAS_TYPE_PROVINCE, 'Provincia', Init::PLUGIN_NAME);
+        AliasType::ensure(Init::ALIAS_TYPE_CITY, 'Ciudad', Init::PLUGIN_NAME);
+        AliasType::ensure(Init::ALIAS_TYPE_POI, 'Punto de interés', Init::PLUGIN_NAME);
     }
 
     protected function tearDown(): void
     {
         $this->logErrors();
+    }
+
+    private function assertAliasCod(Alias $alias, string $expected): void
+    {
+        $reload = new Alias();
+        $this->assertTrue($reload->load($alias->id));
+        $this->assertSame($expected, (string)$reload->cod, 'el alias debe seguir a la clave renombrada');
+    }
+
+    /** el borrado se niega, avisa con la clave dada y la localización sigue */
+    private function assertRefused($model, string $key): void
+    {
+        MiniLog::clear();
+        $this->assertFalse($model->delete(), 'no debe borrarse: ' . $key);
+        $this->assertContains($key, array_column(MiniLog::read('', ['warning']), 'original'));
+        $this->assertTrue($model->exists(), 'la localización debe seguir existiendo');
+        MiniLog::clear();
+    }
+
+    /** un id numérico que no usa nadie en la tabla del modelo */
+    private function freeId(string $class): int
+    {
+        do {
+            $id = mt_rand(900000, 999999);
+        } while ((new $class())->load($id));
+        return $id;
+    }
+
+    private function makeAlias(string $type, $cod, string $text): Alias
+    {
+        $alias = new Alias();
+        $alias->aliastype = $type;
+        $alias->cod = (string)$cod;
+        $alias->alias = self::ALIAS_PREFIX . $text . '-' . mt_rand(1, 99999);
+        $this->assertTrue($alias->save(), 'no se pudo guardar el alias ' . $text);
+        return $alias;
+    }
+
+    private function makeCity(): array
+    {
+        $country = $this->makeCountry();
+        $province = $this->getRandomProvince($country->codpais);
+        $this->assertTrue($province->save(), 'no se pudo crear la provincia');
+        $city = $this->getRandomCity($province->idprovincia);
+        $this->assertTrue($city->save(), 'no se pudo crear la ciudad');
+        return [$country, $province, $city];
+    }
+
+    private function makeCountry(): Pais
+    {
+        // getRandomCountry() elige entre 99 códigos: con restos de una pasada muerta a medias,
+        // reutilizaría un país que ya tiene provincias. Se busca uno libre.
+        $country = $this->getRandomCountry();
+        do {
+            $country->codpais = 'TA' . mt_rand(1000, 9999);
+        } while ((new Pais())->load($country->codpais));
+        $this->assertTrue($country->save(), 'no se pudo crear el país');
+        return $country;
+    }
+
+    private function makePoi(Ciudad $city): PuntoInteresCiudad
+    {
+        $poi = new PuntoInteresCiudad();
+        $poi->idciudad = $city->idciudad;
+        $poi->name = 'Test POI ' . mt_rand(1, 99999);
+        $this->assertTrue($poi->save(), 'no se pudo crear el punto de interés');
+        return $poi;
     }
 }

@@ -1,11 +1,16 @@
 {
     "alias": "Alias",
     "alias-cod-not-found": "No existe el registro %cod% para el tipo de alias %aliastype%.",
-    "aliaslocalizaciones": "AliasLocalizaciones",
+    "alias-rename-error": "No se pudieron pasar los alias de %aliastype% de %old% a %new%.",
     "aliases": "Alias",
+    "aliaslocalizaciones": "AliasLocalizaciones",
     "city": "Ciudad",
     "country": "País",
     "favorite": "Favorito",
+    "location-has-aliases": "No se puede borrar: tiene %count% alias. Bórralos antes desde su pestaña de alias.",
+    "location-has-cities": "No se puede borrar: tiene %count% ciudades. Bórralas antes, de abajo arriba.",
+    "location-has-pois": "No se puede borrar: tiene %count% puntos de interés. Bórralos antes.",
+    "location-has-provinces": "No se puede borrar: tiene %count% provincias. Bórralas antes, de abajo arriba.",
     "poi": "Punto de interés",
     "province": "Provincia"
 }

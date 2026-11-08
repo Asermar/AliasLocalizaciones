@@ -19,27 +19,33 @@
 namespace FacturaScripts\Plugins\AliasLocalizaciones\Extension\Model;
 
 use Closure;
+use FacturaScripts\Core\Tools;
 use FacturaScripts\Core\Where;
 use FacturaScripts\Dinamic\Model\Alias;
 use FacturaScripts\Plugins\AliasLocalizaciones\Init;
 
 /**
- * Simula el ON DELETE CASCADE: al eliminar un punto de interés, borra sus alias.
+ * Alias de un punto de interés: no se borra si tiene alias propios.
  *
  * @author Alexis Serafín <alexis@okodex.com>
  */
 class PuntoInteresCiudad
 {
-    public function delete(): Closure
+    public function deleteBefore(): Closure
     {
         return function () {
-            $where = [
+            $refused = false;
+
+            $aliases = Alias::count([
                 Where::eq('aliastype', Init::ALIAS_TYPE_POI),
-                Where::eq('cod', $this->id),
-            ];
-            foreach (Alias::all($where) as $alias) {
-                $alias->delete();
+                Where::eq('cod', (string)$this->id),
+            ]);
+            if ($aliases > 0) {
+                Tools::log()->warning('location-has-aliases', ['%count%' => $aliases]);
+                $refused = true;
             }
+
+            return $refused ? false : null;
         };
     }
 }

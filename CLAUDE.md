@@ -2,7 +2,8 @@
 
 Plugin **satélite** de **[Alias](../Alias/CLAUDE.md)** que dota de **alias polimórficos** a las
 fichas de **países, provincias, ciudades y puntos de interés** del core de FacturaScripts.
-`version 1.02`, `min_version 2025`, `min_php 8`, `require = 'Alias'`. Licencia **GPL v3**.
+`version 1.03`, `min_version 2025`, `min_php 8`, `require = 'Alias'`,
+`require_min = 'Alias:1.03'`. Licencia **GPL v3**.
 Copyright **Okodex** / autor **Alexis Serafín**. Es submódulo dentro de Mesa_FS.
 
 > **El mecanismo general (alias polimórfico, catálogo `aliastypes`, FK simulada, favorito único,
@@ -58,7 +59,9 @@ satélite"*). Concretado aquí:
 
 - **UI** — cuatro extensiones de controlador (`Extension\Controller\Edit{Pais,Provincia,Ciudad,
   PuntoInteresCiudad}`), cada una con `createViews()` (añade la EditListView) y `loadData()` (filtra
-  por su `aliastype` + `cod = model->id()`; ese `Where` autorrellena el alta).
+  por su `aliastype` + `cod = model->id()`; ese `Where` autorrellena el alta). `createViews()` llama
+  además a `AliasTabGuard::protect()` (Alias): la pestaña sólo crea, edita o borra alias de la ficha
+  abierta. Lo prueba `Test/main/AliasLocalizacionesPestanaTest.php` con las cuatro fichas.
 
 - **Una única XMLView compartida** (`XMLView/EditAliasLocalizacion.xml`): las cuatro fichas la
   reutilizan porque las cuatro EditListView se llaman igual, `'EditAliasLocalizacion'`

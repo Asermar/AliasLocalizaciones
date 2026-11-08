@@ -2,7 +2,7 @@
 
 Plugin **satélite** de **[Alias](../Alias/CLAUDE.md)** que dota de **alias polimórficos** a las
 fichas de **países, provincias, ciudades y puntos de interés** del core de FacturaScripts.
-`version 1.00`, `min_version 2025`, `min_php 8`, `require = 'Alias'`. Licencia **GPL v3**.
+`version 1.01`, `min_version 2025`, `min_php 8`, `require = 'Alias'`. Licencia **GPL v3**.
 Copyright **Okodex** / autor **Alexis Serafín**. Es submódulo dentro de Mesa_FS.
 
 > **El mecanismo general (alias polimórfico, catálogo `aliastypes`, FK simulada, favorito único,
@@ -16,7 +16,7 @@ Sigue el molde estándar de satélite (ver `Alias/CLAUDE.md`, sección *"Cómo l
 satélite"*). Concretado aquí:
 
 - **Cuatro tipos registrados** (`Init::update()` → `AliasType::ensure(...)`), constantes en `Init`:
-  | Constante | Código de tipo | Modelo destino | Ficha (EditController) | `cod` (en `delete()`) |
+  | Constante | Código de tipo | Modelo destino | Ficha (EditController) | `cod` |
   |-----------|----------------|----------------|------------------------|-----------------------|
   | `ALIAS_TYPE_COUNTRY` | `country` | `Pais` | `EditPais` | `codpais` |
   | `ALIAS_TYPE_PROVINCE` | `province` | `Provincia` | `EditProvincia` | `idprovincia` |
@@ -28,9 +28,21 @@ satélite"*). Concretado aquí:
   `Pais`/`Provincia`/`Ciudad`/`PuntoInteresCiudad`; para cualquier otro `aliastype` devuelve `true`
   (invariante de convivencia; ver `Alias/CLAUDE.md`).
 
-- **Cascada** — una extensión de modelo por entidad (`Extension\Model\{Pais,Provincia,Ciudad,
-  PuntoInteresCiudad}::delete()`), cada una borra los `Alias` de su tipo con `cod` = la PK de la
-  entidad (columna `cod` de la tabla anterior).
+- **Negativa a borrar, no cascada** (decisión de Alexis, 8-nov-2026) — una extensión de modelo por
+  entidad (`Extension\Model\{Pais,Provincia,Ciudad,PuntoInteresCiudad}::deleteBefore()`). No se borra
+  una localización que tenga **alias propios** o **algo debajo** (provincias de un país, ciudades de
+  una provincia, puntos de una ciudad), aunque eso no tenga alias: se vacía de abajo arriba, y el aviso
+  dice qué lo impide (`location-has-aliases`, `-provinces`, `-cities`, `-pois`, con el recuento). Va en
+  `deleteBefore` porque los hijos los borra la base por **FK ON DELETE CASCADE** sin pasar por el
+  modelo: la cascada de antes sólo limpiaba los alias del nivel borrado y dejaba huérfanos los de los
+  descendientes. Motivo de la decisión: borrar con alias existentes es probablemente un error, y en
+  cascada borraría mucho que luego habría que reconstruir; en la interfaz de alias se borran con
+  comodidad.
+- **Renombrado de clave** — `Pais`, `Provincia` y `Ciudad` (`codpais`, `idprovincia`, `idciudad`, que se
+  pueden editar) llevan `changePrimaryColumnValueBefore/After`: el Before guarda el código viejo en
+  un almacén privado de la extensión, porque `changeId()` del core sobrescribe `original` con el nuevo
+  antes de llamar al After, y el After hace un único UPDATE de `alias.cod` al nuevo. El id del punto
+  de interés es serial y no se edita.
 
 - **UI** — cuatro extensiones de controlador (`Extension\Controller\Edit{Pais,Provincia,Ciudad,
   PuntoInteresCiudad}`), cada una con `createViews()` (añade la EditListView) y `loadData()` (filtra
@@ -44,17 +56,16 @@ satélite"*). Concretado aquí:
 
 ## Extensión de tabla (`Extension/Table/puntos_interes_ciudades.xml`)
 
-Dos columnas añadidas a la tabla del core, que necesita el volcado de POI de la BD de reservas
-(`Mesa_FS/bin/migracion-reservas/importar_poi_localizaciones.php`):
+Dos columnas añadidas a la tabla del core, que necesita el volcado de puntos de interés desde un
+sistema de reservas anterior:
 
 | Columna | Tipo | Para qué | ¿Andamiaje? |
 |---|---|---|---|
-| `bs_parada` | `varchar(250)` | El nombre de parada del POI legacy. Lo consume `getPOIParada()` de Mesa_Reservas al generar los ODS de importación | **No**: dato de negocio |
-| `bs_legacy_idpoi` | `integer` | El `idPOI` legacy, para que la reproyección emita un identificador estable mientras Mesa_Reservas siga vivo | **Sí**: se retira cuando la importación viva dentro de FS |
+| `bs_parada` | `varchar(250)` | El nombre de parada del punto en el sistema anterior, que éste usa al generar sus ficheros de importación | **No**: dato de negocio |
+| `bs_legacy_idpoi` | `integer` | El identificador del punto en el sistema anterior, para emitir uno estable mientras ese sistema siga vivo | **Sí**: se retira cuando la importación viva dentro de FS |
 
-> `bs_parada` **ya existía en la BD como columna huérfana** antes de declararla aquí, de un intento
-> anterior a la conversión de los plugins en submódulos. Declararla la volvió legítima sin ningún
-> `ALTER`. Es el ejemplo de libro de que `DbUpdater` nunca elimina columnas: lo que se crea, queda.
+> `DbUpdater` nunca elimina columnas: declarar una que ya exista en la base con el mismo tipo la
+> vuelve legítima sin ningún `ALTER`.
 
 Se declaran en **este** plugin, y no en BusCanarias, porque es el dueño del `aliastype='poi'` y ya
 extiende `PuntoInteresCiudad` por modelo y por controlador: no añade dependencias nuevas.
@@ -67,11 +78,13 @@ extiende `PuntoInteresCiudad` por modelo y por controlador: no añade dependenci
 
 ## Tests (`Test/main/AliasLocalizacionesTest.php`)
 
-`install-plugins.txt` = `Alias,AliasLocalizaciones`. Cinco tests: alta + **borrado en cascada** para
-país, provincia, ciudad y punto de interés (construyendo la jerarquía país→provincia→ciudad→POI con
-`RandomDataTrait`), y **rechazo** de `cod` inexistente (`testAliasRejectsMissingLocation`, limpia el
-MiniLog con `MiniLog::clear()`). `setUp()` siembra los cuatro tipos con un helper `ensureType()`.
-Usa `RandomDataTrait` (`getRandomCountry`/`getRandomProvince`/`getRandomCity`) y `LogErrorsTrait`.
+`install-plugins.txt` = `Alias,AliasLocalizaciones`. Once tests: por nivel, la **negativa** a borrar
+con alias y con hijos sin alias (y que se borra una vez vacío), el **renombrado** de país, provincia y
+ciudad, y el **rechazo** de `cod` inexistente. Las negativas se comprueban por la clave del aviso
+(`MiniLog::read()[...]['original']`). `setUp()` asegura los cuatro tipos con `AliasType::ensure()`
+(el catálogo no admite altas a mano) y borra los alias de prueba (`LOCTEST-…`) que hubiera dejado una
+pasada muerta a medias: si no, uno huérfano bloquea el borrado de la siguiente localización que reciba
+su id. El país se crea con un código libre, porque `getRandomCountry()` elige entre sólo 99.
 
 ## Convenciones y gotchas
 
@@ -81,7 +94,7 @@ Usa `RandomDataTrait` (`getRandomCountry`/`getRandomProvince`/`getRandomCity`) y
   fichas a la vez.
 - Mantener la invariante de `test()` (devolver `true` para tipos ajenos) para no romper la
   convivencia con AliasClientes / AliasBusCanarias sobre el mismo modelo `Alias`.
-- No crear `aliastypes` desde la UI; siempre por `AliasType::ensure()` en `update()`.
+- Los tipos sólo por `AliasType::ensure()` en `update()`: el modelo rechaza cualquier otra escritura.
 - Cabeceras de autoría Okodex/Alexis, GPL v3 (ver `Alias/CLAUDE.md`).
 
 ## Dudas / notas

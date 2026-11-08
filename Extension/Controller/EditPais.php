@@ -20,6 +20,7 @@ namespace FacturaScripts\Plugins\AliasLocalizaciones\Extension\Controller;
 
 use Closure;
 use FacturaScripts\Core\Where;
+use FacturaScripts\Dinamic\Lib\AliasTabGuard;
 use FacturaScripts\Plugins\AliasLocalizaciones\Init;
 
 /**
@@ -33,6 +34,15 @@ class EditPais
     {
         return function () {
             $this->addEditListView('EditAliasLocalizacion', 'Alias', 'aliases', 'fa-solid fa-tags');
+
+            // la pestaña sólo escribe alias de esta ficha: es lo último antes de las acciones
+            AliasTabGuard::protect(
+                $this->request,
+                $this->active,
+                'EditAliasLocalizacion',
+                Init::ALIAS_TYPE_COUNTRY,
+                $this->views[$this->getMainViewName()]->model
+            );
         };
     }
 

@@ -58,7 +58,9 @@ satélite"*). Concretado aquí:
 
 - **UI** — cuatro extensiones de controlador (`Extension\Controller\Edit{Pais,Provincia,Ciudad,
   PuntoInteresCiudad}`), cada una con `createViews()` (añade la EditListView) y `loadData()` (filtra
-  por su `aliastype` + `cod = model->id()`; ese `Where` autorrellena el alta).
+  por su `aliastype` + `cod = model->id()`; ese `Where` autorrellena el alta). `createViews()` llama
+  además a `AliasTabGuard::protect()` (Alias): la pestaña sólo crea, edita o borra alias de la ficha
+  abierta. Lo prueba `Test/main/AliasLocalizacionesPestanaTest.php` con las cuatro fichas.
 
 - **Una única XMLView compartida** (`XMLView/EditAliasLocalizacion.xml`): las cuatro fichas la
   reutilizan porque las cuatro EditListView se llaman igual, `'EditAliasLocalizacion'`
